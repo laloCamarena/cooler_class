@@ -1,0 +1,8 @@
+**/__pycache__/
+**/data/
+**/env/
+**/venv/
+**/envs/
+**/.vscode/
+**/cooler_class.egg-info/
+**/.ipynb_checkpoints/
