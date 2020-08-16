@@ -10,7 +10,7 @@ setup(name='cooler-class',
     install_requires=[
         'numpy', 'sqlalchemy', 'pandas', 'seaborn',
         'mysqlclient', 'opencv-python', 'flask',
-        'flask-sqlalchemy', 'flask-restful',
+        'flask-sqlalchemy', 'flask-restful', 'passlib',
         'PyQt5==5.13.0', 'pyqt5-tools', 'pytest'
     ]
 )
