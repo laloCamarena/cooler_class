@@ -1,27 +1,28 @@
+# To run the app server you need to import this file to a script: from cooler_class.transmition import transmition
+# you need to set the database: transmition.app.config['SQLALCHEMY_DATABASE_URI'] = {your_database}
+# then you can run the server as transmition.app.run()
+
 # built-ins
-import json
+import time
+import datetime
 
 # Pypi packages
-from passlib.hash import pbkdf2_sha256
+import cv2
+from passlib.hash import pbkdf2_sha512
 from flask import Flask, request
+from flask_cors import CORS
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from flask_sqlalchemy import SQLAlchemy
 
-with open('../../../config.json') as f:
-    config_file = json.load(f)
-    db_user = config_file['DB_user']
-    db_password = config_file['DB_password']
-
 app = Flask(__name__)
+CORS(app)
 api = Api(app)
-# app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+mysqldb://{db_user}:{db_password}@localhost:3306/cooler_class'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 db = SQLAlchemy(app)
 
 userClass = db.Table(
     'UserClass',
-    db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
-    db.Column('class_id', db.Integer, db.ForeignKey('class.id'))
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), nullable=False),
+    db.Column('class_id', db.Integer, db.ForeignKey('class.id'), nullable=False)
 )
 
 class UserModel(db.Model):
@@ -29,29 +30,84 @@ class UserModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(50), nullable=False)
-    password = db.Column(db.String(100), nullable=False)
-    classes = db.relationship('class', secondary=userClass, backref=db.backref('students'), lazy='dynamic')
+    password = db.Column(db.String(200), nullable=False)
+    classes = db.relationship('ClassModel', secondary=userClass, backref=db.backref('students'), lazy='dynamic')
 
 class ClassModel(db.Model):
     __tablename__ = 'class'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    students = db.relationship('user', secondary=userClass, backref=db.backref('classes'), lazy='dynamic')
-    videos = db.relationship('VideoModel', backref='class')
+    schedule = db.Column(db.DateTime, nullable=False)
+    videos = db.relationship('VideoModel', backref='classs')
 
 class VideoModel(db.Model):
     __tablename__ = 'video'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     views = db.Column(db.Integer, nullable=False)
+    route = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    upload_time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
 
-    def __repr__(self):
-        return f'Video(name = {self.name}), views = {self.views}, likes = {self.likes}'
+# login parser definition
+login_parser = reqparse.RequestParser()
+login_parser.add_argument('email', type=str)
+login_parser.add_argument('password', type=str)
 
-# Create the database it hasn't been created
-if not db.engine.table_names(): # this just checks if theres any tables, if there are missing tables in the database you need to create them again
-    db.create_all()
+class Login(Resource):
+    def post(self):
+        request.get_json()
+        args = login_parser.parse_args()
+        email = args['email']
+        pwd = args['password']
+        result = UserModel.query.filter_by(email=email).first()
+        if result:
+            if pbkdf2_sha512.verify(pwd, result.password):
+                return {'name': result.name}, 201
+            else:
+                return 204
+        else:
+            return 204
+
+# register parser definition
+register_parser = reqparse.RequestParser()
+register_parser.add_argument('name', type=str)
+register_parser.add_argument('email', type=str)
+register_parser.add_argument('password', type=str)
+
+class Register(Resource):
+    def post(self):
+        request.get_json()
+        args = register_parser.parse_args()
+        name = args['name']
+        email = args['email']
+        pwd = args['password']
+        if not UserModel.query.filter_by(email=email).first():
+            pwd_hash = pbkdf2_sha512.encrypt(pwd)
+            user = UserModel(name=name, email=email, password=pwd_hash)
+            db.session.add(user)
+            db.session.commit()
+            return 201
+        else:
+            return 204
+
+
+# register parser definition
+addVideo_parser = reqparse.RequestParser()
+addVideo_parser.add_argument('name', type=str, required=True)
+addVideo_parser.add_argument('description', type=str)
+
+class AddVideo(Resource):
+    def post(self, class_id):
+        request.get_json()
+        args = addVideo_parser.parse_args()
+        name = args['name']
+        descrption = args['description']
+        video = VideoModel(name=name, descrption=descrption, class_id=class_id)
+        db.session.add(video)
+        db.session.commit()
+        return 201
 
 # video parsers definition
 video_put_args = reqparse.RequestParser()
@@ -107,7 +163,21 @@ class Video(Resource):
         db.session.commit()
         return '', 204
 
-api.add_resource(Video, '/class/archive/<int:video_id>')
+    def process_video(self, video_route, fps):
+        cap = cv2.VideoCapture(video_route)
+        # read until eof
+        while cap.isOpened():
+            # get video frame by frame
+            ret, img = cap.read()
+            if ret:
+                img = cv2.resize(img, (0,0), fx=0.5, fy=0.5)
+                frame = cv2.imencode('jpg', img)[1].tobytes()
+                yield b'--frame\r\n'b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n'
+                time.sleep(1 / fps)
+            else:
+                break
 
-if __name__ == '__main__':
-    app.run(debug=True)
+api.add_resource(Login, '/login')
+api.add_resource(Register, '/register')
+api.add_resource(AddVideo, '/class/<int:class_id>/add_video/')
+api.add_resource(Video, '/watch/<int:video_id>')
