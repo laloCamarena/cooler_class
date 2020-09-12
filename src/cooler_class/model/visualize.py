@@ -7,7 +7,7 @@ def random_colors(N):
     return colors
 
 def apply_mask(image, mask, color, alpha=0.5):
-    """apply mask to image"""
+    # apply mask to image
     for n, c in enumerate(color):
         image[:, :, n] = np.where(
             mask == 1,
@@ -17,9 +17,7 @@ def apply_mask(image, mask, color, alpha=0.5):
     return image
 
 def display_instances(image, boxes, masks, ids, names, scores):
-    """
-        take the image and results and apply the mask, box, and Label
-    """
+    # take the image and results and apply the mask, box, and Label
     n_instances = boxes.shape[0]
     colors = random_colors(n_instances)
 

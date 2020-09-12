@@ -11,10 +11,10 @@ from passlib.hash import pbkdf2_sha512
 from flask import Flask, request
 from flask_cors import CORS
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
-from cooler_class.database.database import *
+from cooler_class.database import database
 
 app = Flask(__name__)
-app = create_app(app)
+app = database.add_db(app)
 app.app_context().push()
 CORS(app)
 api = Api(app)
@@ -30,7 +30,7 @@ class Login(Resource):
         args = login_parser.parse_args()
         email = args['email']
         pwd = args['password']
-        result = UserModel.query.filter_by(email=email).first()
+        result = database.UserModel.query.filter_by(email=email).first()
         if result:
             if pbkdf2_sha512.verify(pwd, result.password):
                 return {'name': result.name}, 201
@@ -52,11 +52,11 @@ class Register(Resource):
         name = args['name']
         email = args['email']
         pwd = args['password']
-        if not UserModel.query.filter_by(email=email).first():
+        if not database.UserModel.query.filter_by(email=email).first():
             pwd_hash = pbkdf2_sha512.encrypt(pwd)
-            user = UserModel(name=name, email=email, password=pwd_hash)
-            db.session.add(user)
-            db.session.commit()
+            user = database.UserModel(name=name, email=email, password=pwd_hash)
+            database.db.session.add(user)
+            database.db.session.commit()
             return 201
         else:
             return 204
@@ -73,9 +73,9 @@ class AddVideo(Resource):
         args = addVideo_parser.parse_args()
         name = args['name']
         descrption = args['description']
-        video = VideoModel(name=name, descrption=descrption, class_id=class_id)
-        db.session.add(video)
-        db.session.commit()
+        video = database.VideoModel(name=name, descrption=descrption, class_id=class_id)
+        database.db.session.add(video)
+        database.db.session.commit()
         return 201
 
 # video parsers definition
@@ -98,7 +98,7 @@ active_streams = []
 class Video(Resource):
     @marshal_with(video_resource_fields)
     def get(self, video_id):
-        result = VideoModel.query.filter_by(id=video_id).first()
+        result = database.VideoModel.query.filter_by(id=video_id).first()
         if not result:
             abort(404, message='Could not find a video with that id')
         return result
@@ -106,30 +106,30 @@ class Video(Resource):
     @marshal_with(video_resource_fields)
     def put(self, video_id):
         args = video_put_args.parse_args() # returns the data that was sent from tne user
-        video = VideoModel(name=args['name'], views=args['views'])
-        db.session.add(video)
-        db.session.commit()
+        video = database.VideoModel(name=args['name'], views=args['views'])
+        database.db.session.add(video)
+        database.db.session.commit()
         return video, 201
 
     @marshal_with(video_resource_fields)
     def patch(self, video_id):
-        result = VideoModel.query.filter_by(id=video_id).first()
+        result = database.VideoModel.query.filter_by(id=video_id).first()
         if not result:
             abort(404, message='Video does not exist')
         new_values = video_update_args.parse_args()
         for key, value in new_values.items():
             if value:
                 setattr(result, key, value)
-        db.session.add(result)
-        db.session.commit()
+        database.db.session.add(result)
+        database.db.session.commit()
         return result, 201
 
     def delete(self, video_id):
-        result = VideoModel.query.filter_by(id=video_id).first()
+        result = database.VideoModel.query.filter_by(id=video_id).first()
         if not result:
             abort(404, message='Video does not exists')
-        db.session.delete(result)
-        db.session.commit()
+        database.db.session.delete(result)
+        database.db.session.commit()
         return '', 204
 
     def process_video(self, video_route, fps):

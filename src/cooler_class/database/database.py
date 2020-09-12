@@ -35,6 +35,6 @@ class VideoModel(db.Model):
     upload_time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
 
-def create_app(app):
+def add_db(app):
     db.init_app(app)
     return app
