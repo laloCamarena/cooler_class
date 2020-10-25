@@ -18,5 +18,5 @@ transmition.app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+mysqldb://{db_user}:
 if __name__ == '__main__':
     # Create the database it hasn't been created
     if not database.db.engine.table_names(): # this just checks if theres any tables, if there are missing tables in the database you need to create them again
-        transmition.db.create_all()
-    transmition.app.run(debug=True)
+        database.db.create_all()
+    transmition.socketio.run(transmition.app, debug=True)

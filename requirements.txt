@@ -8,6 +8,7 @@ flask
 flask-sqlalchemy
 flask-restful
 flask-cors
+flask-socketio
 passlib
 pytest
 Pillow

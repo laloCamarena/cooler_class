@@ -7,17 +7,25 @@ import time
 
 # Pypi/local packages
 import cv2
-from passlib.hash import pbkdf2_sha512
-from flask import Flask, request
+import io
+import base64
+import numpy as np
+from PIL import Image
 from flask_cors import CORS
+from flask import Flask, request
+from flask_socketio import SocketIO, send, emit
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
+from passlib.hash import pbkdf2_sha512
 from cooler_class.database import database
+# from cooler_class.model.model import MODEL, CLASS_NAMES
+# from cooler_class.model.visualize import display_instances
 
 app = Flask(__name__)
 app = database.add_db(app)
 app.app_context().push()
 CORS(app)
 api = Api(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # login parser definition
 login_parser = reqparse.RequestParser()
@@ -28,8 +36,8 @@ class Login(Resource):
     def post(self):
         request.get_json()
         args = login_parser.parse_args()
-        email = args['email']
-        pwd = args['password']
+        email = str(args['email'])
+        pwd = str(args['password'])
         result = database.UserModel.query.filter_by(email=email).first()
         if result:
             if pbkdf2_sha512.verify(pwd, result.password):
@@ -49,9 +57,9 @@ class Register(Resource):
     def post(self):
         request.get_json()
         args = register_parser.parse_args()
-        name = args['name']
-        email = args['email']
-        pwd = args['password']
+        name = str(args['name'])
+        email = str(args['email'])
+        pwd = str(args['password'])
         if not database.UserModel.query.filter_by(email=email).first():
             pwd_hash = pbkdf2_sha512.encrypt(pwd)
             user = database.UserModel(name=name, email=email, password=pwd_hash)
@@ -71,7 +79,7 @@ class AddVideo(Resource):
     def post(self, class_id):
         request.get_json()
         args = addVideo_parser.parse_args()
-        name = args['name']
+        name = str(args['name'])
         descrption = args['description']
         video = database.VideoModel(name=name, descrption=descrption, class_id=class_id)
         database.db.session.add(video)
@@ -150,3 +158,28 @@ api.add_resource(Login, '/login')
 api.add_resource(Register, '/register')
 api.add_resource(AddVideo, '/class/<int:class_id>/add_video/')
 api.add_resource(Video, '/watch/<int:video_id>')
+
+
+#Socket communication
+@socketio.on('stream')
+def handle_frame(frame):
+    frame_data = frame.split(',')
+    # decode image to base64
+    im_data = base64.b64decode(str(frame_data[1]))
+
+    # reconstruct image as an numpy array
+    img = Image.open(io.BytesIO(im_data))
+
+    # convert image to cv2 image and convert it to BGR
+    cv2_img = np.array(img)[:, :, ::-1]
+
+    # analize image and create the new image that will be sent
+    # results = MODEL.detect([cv2_img], verbose=0)
+    # r = results[0]
+    # cooler_image = display_instances(cv2_img.copy(), r['rois'], r['masks'], r['class_ids'], CLASS_NAMES, r['scores'])
+
+    # encode image to base64
+    buffer = cv2.imencode('.jpg', cv2_img)[1].tobytes()
+    encoded_image = 'data:image/jpeg;base64,' + base64.b64encode(buffer).decode('utf-8')
+
+    emit('get-stream', encoded_image, broadcast=True)

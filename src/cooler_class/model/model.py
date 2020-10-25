@@ -19,10 +19,9 @@ class InferenceConfig(Config):
 config = InferenceConfig()
 config.display()
 
-MODEL = modellib.MaskRCNN(
-    mode="inference", model_dir=MODEL_DIR, config=config
-)
+MODEL = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=config)
 MODEL.load_weights(COCO_MODEL_PATH, by_name=True)
+MODEL.keras_model._make_predict_function()
 CLASS_NAMES = [
     'BG', 'person', 'bicycle', 'car', 'motorcycle', 'airplane',
     'bus', 'train', 'truck', 'boat', 'traffic light',
@@ -44,7 +43,7 @@ CLASS_NAMES = [
 # test the model with a webcam
 if __name__ == '__main__':
     import cv2
-    from cooler_class.model.model import MODEL, CLASS_NAMES
+    # from cooler_class.model.model import MODEL, CLASS_NAMES
     from cooler_class.model.visualize import display_instances
 
     capture = cv2.VideoCapture(0)
@@ -56,9 +55,7 @@ if __name__ == '__main__':
         ret, frame = capture.read()
         results = MODEL.detect([frame], verbose=0)
         r = results[0]
-        frame = display_instances(
-            frame, r['rois'], r['masks'], r['class_ids'], CLASS_NAMES, r['scores']
-        )
+        frame = display_instances(frame, r['rois'], r['masks'], r['class_ids'], CLASS_NAMES, r['scores'])
         cv2.imshow('frame', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
