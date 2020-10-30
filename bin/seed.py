@@ -16,14 +16,14 @@ db.create_all()
 
 pwd = '12345678'
 pwd_hash = pbkdf2_sha512.encrypt(pwd)
-student1 = UserModel(name='Eduardo Camarena', email='lalo@gmail.com', password=pwd_hash)
-student2 = UserModel(name='Diego Gozalez', email='diego@gmail.com', password=pwd_hash)
-student3 = UserModel(name='Juan Olvera', email='juan@gmail.com', password=pwd_hash)
-student4 = UserModel(name='Pepe Alvarez', email='pepe@gmail.com', password=pwd_hash)
+student1 = UserModel(first_name='Eduardo', last_name ='Camarena', email='lalo@gmail.com', password=pwd_hash)
+student2 = UserModel(first_name='Diego', last_name='Gozalez', email='diego@gmail.com', password=pwd_hash)
+student3 = UserModel(first_name='Juan', last_name='Olvera', email='juan@gmail.com', password=pwd_hash)
+student4 = UserModel(first_name='Pepe', last_name='Alvarez', email='pepe@gmail.com', user_type='teacher', password=pwd_hash)
 
-class1 = ClassModel(name='Aprendizaje 101', password=pwd)
-class2 = ClassModel(name='Matematicas de algo 101', password=pwd)
-class3 = ClassModel(name='Aprender!', password=pwd)
+class1 = ClassModel(name='Aprendizaje 101', start_time=datetime.time(hour=9), end_time=datetime.time(hour=11), password=pwd_hash)
+class2 = ClassModel(name='Matematicas de algo 101', password=pwd_hash)
+class3 = ClassModel(name='Aprender!', password=pwd_hash)
 
 student1.classes.append(class1)
 student1.classes.append(class3)

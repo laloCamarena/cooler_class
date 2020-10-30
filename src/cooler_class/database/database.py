@@ -13,8 +13,10 @@ userClass = db.Table(
 class UserModel(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
+    first_name = db.Column(db.String(30), nullable=False)
+    last_name = db.Column(db.String(30), nullable=False)
     email = db.Column(db.String(50), nullable=False)
+    user_type = db.Column(db.String(20), nullable=False, default='student')
     password = db.Column(db.String(200), nullable=False)
     classes = db.relationship('ClassModel', secondary=userClass, backref=db.backref('students'), lazy='dynamic')
 
@@ -22,7 +24,10 @@ class ClassModel(db.Model):
     __tablename__ = 'class'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    password = db.Column(db.String(100), nullable=False)
+    days = db.Column(db.String(50), nullable=True)
+    start_time = db.Column(db.Time, nullable=True)
+    end_time = db.Column(db.Time, nullable=True)
+    password = db.Column(db.String(200), nullable=False)
     videos = db.relationship('VideoModel', backref='classs')
 
 class VideoModel(db.Model):
