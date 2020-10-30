@@ -22,7 +22,7 @@ class ClassModel(db.Model):
     __tablename__ = 'class'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    schedule = db.Column(db.DateTime, nullable=False)
+    password = db.Column(db.String(100), nullable=False)
     videos = db.relationship('VideoModel', backref='classs')
 
 class VideoModel(db.Model):
