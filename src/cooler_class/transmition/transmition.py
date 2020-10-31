@@ -49,7 +49,8 @@ class Login(Resource):
 
 # register parser definition
 register_parser = reqparse.RequestParser()
-register_parser.add_argument('name', type=str)
+register_parser.add_argument('firstName', type=str)
+register_parser.add_argument('lastName', type=str)
 register_parser.add_argument('email', type=str)
 register_parser.add_argument('password', type=str)
 
@@ -57,12 +58,18 @@ class Register(Resource):
     def post(self):
         request.get_json()
         args = register_parser.parse_args()
-        name = str(args['name'])
+        first_name = str(args['firstName'])
+        last_name = str(args['lastName'])
         email = str(args['email'])
         pwd = str(args['password'])
         if not database.UserModel.query.filter_by(email=email).first():
             pwd_hash = pbkdf2_sha512.encrypt(pwd)
-            user = database.UserModel(name=name, email=email, password=pwd_hash)
+            user = database.UserModel(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                password=pwd_hash
+            )
             database.db.session.add(user)
             database.db.session.commit()
             return 201
@@ -154,8 +161,42 @@ class Video(Resource):
             else:
                 break
 
+enroll_put_args = reqparse.RequestParser()
+enroll_put_args.add_argument('student_id', type=int, help='Student ID is required', required=True)
+enroll_put_args.add_argument('password', type=str, help='Password is required', required=True)
+class Enroll(Resource):
+    def post(self, class_id):
+        request.get_json()
+        args = enroll_put_args.parse_args()
+        student_id = int(args['student_id'])
+        password = str(args['password'])
+        result = database.ClassModel.query.filter_by(id=class_id).first()
+        if result.password != password:
+            abort(204, message='Class password is incorrect')
+        database.db.session.execute(database.userClass.insert().values(class_id=class_id, user_id=student_id))
+        database.db.commit()
+        return 201
+
+
+user_resource_fields = {
+    'id': fields.Integer,
+    'first_name': fields.String,
+    'last_name': fields.String,
+    'email': fields.String,
+    'user_type': fields.String
+}
+class UserData(Resource):
+    @marshal_with(user_resource_fields)
+    def get(self, user_id):
+        user = database.UserModel.query.filter_by(id=user_id).first()
+        if not user:
+            abort(404, message='Could not find a user with that id')
+        return user, 201
+
 api.add_resource(Login, '/login')
 api.add_resource(Register, '/register')
+api.add_resource(UserData, '/user/<int:user_id>')
+api.add_resource(Enroll, '/class/<class_id>/enroll')
 api.add_resource(AddVideo, '/class/<int:class_id>/add_video/')
 api.add_resource(Video, '/watch/<int:video_id>')
 
