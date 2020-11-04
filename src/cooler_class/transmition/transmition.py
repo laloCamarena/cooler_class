@@ -12,7 +12,7 @@ import base64
 import numpy as np
 from PIL import Image
 from flask_cors import CORS
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, send, emit
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from passlib.hash import pbkdf2_sha512
@@ -23,29 +23,38 @@ from cooler_class.database import database
 app = Flask(__name__)
 app = database.add_db(app)
 app.app_context().push()
-CORS(app)
+CORS(app, resources={r'/*': {'origins': '*'}})
 api = Api(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins='*')
 
 # login parser definition
 login_parser = reqparse.RequestParser()
 login_parser.add_argument('email', type=str)
 login_parser.add_argument('password', type=str)
 
+
+user_resource_fields = {
+    'id': fields.Integer,
+    'first_name': fields.String,
+    'last_name': fields.String,
+    'email': fields.String,
+    'user_type': fields.String
+}
+
 class Login(Resource):
+    @marshal_with(user_resource_fields)
     def post(self):
+        print('hola')
         request.get_json()
         args = login_parser.parse_args()
         email = str(args['email'])
         pwd = str(args['password'])
         result = database.UserModel.query.filter_by(email=email).first()
-        if result:
-            if pbkdf2_sha512.verify(pwd, result.password):
-                return {'name': result.name}, 201
-            else:
-                return 204
-        else:
-            return 204
+        if not result:
+            abort(204, message='Incorrect user or password')
+        elif not pbkdf2_sha512.verify(pwd, result.password):
+            abort(204, message='Incorrect user or password')
+        return result, 201
 
 # register parser definition
 register_parser = reqparse.RequestParser()
@@ -177,14 +186,14 @@ class Enroll(Resource):
         database.db.commit()
         return 201
 
+class_data_post_args = reqparse.RequestParser()
+class_data_post_args.add_argument('user_id', type=int, required=True)
+class ClassData(Resource):
+    def post(self):
+        request.get_json()
+        args = class_data_post_args.parse_args()
 
-user_resource_fields = {
-    'id': fields.Integer,
-    'first_name': fields.String,
-    'last_name': fields.String,
-    'email': fields.String,
-    'user_type': fields.String
-}
+
 class UserData(Resource):
     @marshal_with(user_resource_fields)
     def get(self, user_id):
@@ -193,13 +202,29 @@ class UserData(Resource):
             abort(404, message='Could not find a user with that id')
         return user, 201
 
+class UserClasses(Resource):
+    def get(self, user_id):
+        user = database.UserModel.query.filter_by(id=user_id).first()
+        if not user:
+            abort(404, message='Could not find user')
+        return_dicts = []
+        for classs in user.classes:
+            return_dicts.append({
+                'id': classs.id,
+                'name': classs.name,
+                'days': classs.days,
+                'startTime': str(classs.start_time),
+                'endTime': str(classs.end_time)
+            })
+        return return_dicts, 201
+
 api.add_resource(Login, '/login')
 api.add_resource(Register, '/register')
 api.add_resource(UserData, '/user/<int:user_id>')
+api.add_resource(UserClasses, '/user/<int:user_id>/classes')
 api.add_resource(Enroll, '/class/<class_id>/enroll')
 api.add_resource(AddVideo, '/class/<int:class_id>/add_video/')
 api.add_resource(Video, '/watch/<int:video_id>')
-
 
 #Socket communication
 @socketio.on('stream')
