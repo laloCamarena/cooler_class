@@ -44,16 +44,15 @@ user_resource_fields = {
 class Login(Resource):
     @marshal_with(user_resource_fields)
     def post(self):
-        print('hola')
         request.get_json()
         args = login_parser.parse_args()
         email = str(args['email'])
         pwd = str(args['password'])
         result = database.UserModel.query.filter_by(email=email).first()
         if not result:
-            abort(204, message='Incorrect user or password')
+            return '',204
         elif not pbkdf2_sha512.verify(pwd, result.password):
-            abort(204, message='Incorrect user or password')
+            return '',204
         return result, 201
 
 # register parser definition
@@ -62,6 +61,8 @@ register_parser.add_argument('firstName', type=str)
 register_parser.add_argument('lastName', type=str)
 register_parser.add_argument('email', type=str)
 register_parser.add_argument('password', type=str)
+
+
 
 class Register(Resource):
     def post(self):

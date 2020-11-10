@@ -4,7 +4,7 @@ from passlib.hash import pbkdf2_sha512
 from cooler_class.database.database import *
 from cooler_class.transmition.transmition import *
 
-with open('./config.json') as f:
+with open('../config.json') as f:
     config_file = json.load(f)
     db_user = config_file['DB_user']
     db_password = config_file['DB_password']
