@@ -1,5 +1,7 @@
+# built-ins
 import datetime
 
+# Pypi/local packages
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -28,7 +30,23 @@ class ClassModel(db.Model):
     start_time = db.Column(db.Time, nullable=True)
     end_time = db.Column(db.Time, nullable=True)
     password = db.Column(db.String(200), nullable=False)
+    admin = db.Column(db.Integer, nullable=False)
     videos = db.relationship('VideoModel', backref='classs')
+
+class PostModel(db.Model):
+    __tablename__ = 'post'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
+
+class FileModel(db.Model):
+    __tablename__ = 'file'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    location = db.column(db.String(200), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
 
 class VideoModel(db.Model):
     __tablename__ = 'video'
