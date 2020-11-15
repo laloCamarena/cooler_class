@@ -20,6 +20,7 @@ class UserModel(db.Model):
     email = db.Column(db.String(50), nullable=False)
     user_type = db.Column(db.String(20), nullable=False, default='student')
     password = db.Column(db.String(200), nullable=False)
+    files = db.relationship('FileModel', backref='user')
     classes = db.relationship('ClassModel', secondary=userClass, backref=db.backref('students'), lazy='dynamic')
 
 class ClassModel(db.Model):
@@ -32,6 +33,7 @@ class ClassModel(db.Model):
     password = db.Column(db.String(200), nullable=False)
     admin = db.Column(db.Integer, nullable=False)
     videos = db.relationship('VideoModel', backref='classs')
+    posts = db.relationship('PostModel', backref='classs')
 
 class PostModel(db.Model):
     __tablename__ = 'post'
@@ -39,12 +41,13 @@ class PostModel(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
+    files = db.relationship('FileModel', backref='post')
 
 class FileModel(db.Model):
     __tablename__ = 'file'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    location = db.column(db.String(200), nullable=False)
+    location = db.Column(db.String(200), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
 
