@@ -9,6 +9,7 @@ import time
 import cv2
 import io
 import base64
+from cv2 import data
 import numpy as np
 from PIL import Image
 from flask_cors import CORS
@@ -171,13 +172,13 @@ class Video(Resource):
             else:
                 break
 
-enroll_put_args = reqparse.RequestParser()
-enroll_put_args.add_argument('student_id', type=int, help='Student ID is required', required=True)
-enroll_put_args.add_argument('password', type=str, help='Password is required', required=True)
+enroll_post_args = reqparse.RequestParser()
+enroll_post_args.add_argument('student_id', type=int, help='Student ID is required', required=True)
+enroll_post_args.add_argument('password', type=str, help='Password is required', required=True)
 class Enroll(Resource):
     def post(self, class_id):
         request.get_json()
-        args = enroll_put_args.parse_args()
+        args = enroll_post_args.parse_args()
         student_id = int(args['student_id'])
         password = str(args['password'])
         result = database.ClassModel.query.filter_by(id=class_id).first()
@@ -219,13 +220,79 @@ class UserClasses(Resource):
             })
         return return_dicts, 201
 
+
+classPost_post_args = reqparse.RequestParser()
+classPost_post_args.add_argument('name', type=str, help='Post name is required', required=True)
+classPost_post_args.add_argument('description', type=str, help='Post description is required', required=True)
+class ClassPosts(Resource):
+    def get(self, class_id):
+        posts = database.PostModel.query.filter_by(class_id = class_id)
+        return_dicts = []
+        for post in posts:
+            return_dicts.append({
+                'id': post.id,
+                'name': post.name,
+                'description': post.description
+            })
+        return return_dicts, 201
+
+    def post(self, class_id):
+        request.get_json()
+        args = enroll_post_args.parse_args()
+        post_name = str(args['name'])
+        post_description = str(args['description'])
+        result = database.ClassModel.query.filter_by(id=class_id).first()
+        if not result:
+            abort(204, message='Class does not exist')
+        post = database.PostModel(name=post_name, description=post_description)
+        database.db.session.add(post)
+        database.db.session.commit()
+        return {'success': True}, 201
+
+    def patch(self, class_id):
+        pass
+
+
+post_files_post_args = reqparse.RequestParser()
+post_files_post_args.add_argument('name', type=str, help='File name is required', required=True)
+post_files_post_args.add_argument('attachment', type=str, help='Attatchment is required', required=True)
+
+class PostFiles(Resource):
+    def get(self, post_id, user_id):
+        files = database.db.FileModel.query.filter_by(post_id=post_id)
+        return_dicts = []
+        for f in files:
+            #fix this shit
+            attachment = 'this should return the file as base64 string'
+            return_dicts.append({
+                'name': f.name,
+                'attatchment': attachment
+            })
+        return return_dicts, 201
+
+    def post(self, post_id, user_id):
+        request.get_json()
+        args = post_files_post_args.parse_args()
+        name = str(args['name'])
+        attachment = str(args['attachment'])
+        # pending: decode attachment str to pdf and save to storage
+        f = database.FileModel(name=name, location=f'./data/post_files/{name}', user_id=user_id, post_id=post_id)
+        database.db.session.add(f)
+        database.db.session.commit()
+        return {'success': True}, 201
+
+    def patch(self, post_id, user_id):
+        pass
+
 api.add_resource(Login, '/login')
 api.add_resource(Register, '/register')
 api.add_resource(UserData, '/user/<int:user_id>')
 api.add_resource(UserClasses, '/user/<int:user_id>/classes')
-api.add_resource(Enroll, '/class/<class_id>/enroll')
+api.add_resource(Enroll, '/class/<int:class_id>/enroll')
 api.add_resource(AddVideo, '/class/<int:class_id>/add_video/')
 api.add_resource(Video, '/watch/<int:video_id>')
+api.add_resource(ClassPosts, '/class/<int:class_id>/post')
+api.add_resource(PostFiles, '/post/<int:post_id>/file/<int:user_id>')
 
 #Socket communication
 @socketio.on('stream')
