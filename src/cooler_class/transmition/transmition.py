@@ -62,8 +62,7 @@ register_parser.add_argument('firstName', type=str)
 register_parser.add_argument('lastName', type=str)
 register_parser.add_argument('email', type=str)
 register_parser.add_argument('password', type=str)
-
-
+register_parser.add_argument('userType', type=str)
 
 class Register(Resource):
     def post(self):
@@ -73,16 +72,17 @@ class Register(Resource):
         last_name = str(args['lastName'])
         email = str(args['email'])
         pwd = str(args['password'])
+        user_type = str(args['userType'])
         if not database.UserModel.query.filter_by(email=email).first():
             pwd_hash = pbkdf2_sha512.encrypt(pwd)
             user = database.UserModel(
                 first_name=first_name,
                 last_name=last_name,
                 email=email,
+                user_type=user_type,
                 password=pwd_hash
             )
-            database.db.session.add(user)
-            database.db.session.commit()
+            save_to_db(user)
             return 201
         else:
             return 204
@@ -100,8 +100,7 @@ class AddVideo(Resource):
         name = str(args['name'])
         descrption = args['description']
         video = database.VideoModel(name=name, descrption=descrption, class_id=class_id)
-        database.db.session.add(video)
-        database.db.session.commit()
+        save_to_db(video)
         return 201
 
 # video parsers definition
@@ -133,8 +132,7 @@ class Video(Resource):
     def put(self, video_id):
         args = video_put_args.parse_args() # returns the data that was sent from tne user
         video = database.VideoModel(name=args['name'], views=args['views'])
-        database.db.session.add(video)
-        database.db.session.commit()
+        save_to_db(video)
         return video, 201
 
     @marshal_with(video_resource_fields)
@@ -146,8 +144,7 @@ class Video(Resource):
         for key, value in new_values.items():
             if value:
                 setattr(result, key, value)
-        database.db.session.add(result)
-        database.db.session.commit()
+        save_to_db(result)
         return result, 201
 
     def delete(self, video_id):
@@ -211,12 +208,14 @@ class UserClasses(Resource):
             abort(404, message='Could not find user')
         return_dicts = []
         for classs in user.classes:
+            teacher = database.UserModel.query.filter_by(id=classs.admin).first()
             return_dicts.append({
                 'id': classs.id,
                 'name': classs.name,
                 'days': classs.days,
                 'startTime': str(classs.start_time),
-                'endTime': str(classs.end_time)
+                'endTime': str(classs.end_time),
+                'teacher': f'{teacher.first_name} {teacher.last_name}'
             })
         return return_dicts, 201
 
@@ -245,8 +244,7 @@ class ClassPosts(Resource):
         if not result:
             abort(204, message='Class does not exist')
         post = database.PostModel(name=post_name, description=post_description)
-        database.db.session.add(post)
-        database.db.session.commit()
+        save_to_db(post)
         return {'success': True}, 201
 
     def patch(self, class_id):
@@ -285,8 +283,7 @@ class PostFiles(Resource):
         attachment = str(args['attachment'])
         # pending: decode attachment str to pdf and save to storage
         f = database.FileModel(name=name, location=f'./data/post_files/{name}', user_id=user_id, post_id=post_id)
-        database.db.session.add(f)
-        database.db.session.commit()
+        save_to_db(f)
         return {'success': True}, 201
 
     def patch(self, post_id, user_id):
@@ -325,3 +322,7 @@ def handle_frame(frame):
     encoded_image = 'data:image/jpeg;base64,' + base64.b64encode(buffer).decode('utf-8')
 
     emit('get-stream', encoded_image, broadcast=True)
+
+def save_to_db(data):
+    database.db.session.add(data)
+    database.db.session.commit()
