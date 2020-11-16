@@ -170,18 +170,18 @@ class Video(Resource):
                 break
 
 enroll_post_args = reqparse.RequestParser()
-enroll_post_args.add_argument('student_id', type=int, help='Student ID is required', required=True)
+enroll_post_args.add_argument('class_id', type=int, help='Student ID is required', required=True)
 enroll_post_args.add_argument('password', type=str, help='Password is required', required=True)
 class Enroll(Resource):
-    def post(self, class_id):
+    def post(self, user_id):
         request.get_json()
         args = enroll_post_args.parse_args()
-        student_id = int(args['student_id'])
+        class_id = int(args['class_id'])
         password = str(args['password'])
         result = database.ClassModel.query.filter_by(id=class_id).first()
         if result.password != password:
             abort(204, message='Class password is incorrect')
-        database.db.session.execute(database.userClass.insert().values(class_id=class_id, user_id=student_id))
+        database.db.session.execute(database.userClass.insert().values(class_id=class_id, user_id=user_id))
         database.db.commit()
         return 201
 
@@ -207,22 +207,36 @@ class UserClasses(Resource):
         if not user:
             abort(404, message='Could not find user')
         return_dicts = []
-        for classs in user.classes:
-            teacher = database.UserModel.query.filter_by(id=classs.admin).first()
-            return_dicts.append({
-                'id': classs.id,
-                'name': classs.name,
-                'days': classs.days,
-                'startTime': str(classs.start_time),
-                'endTime': str(classs.end_time),
-                'teacher': f'{teacher.first_name} {teacher.last_name}'
-            })
+        if user.user_type == 'student':
+            for classs in user.classes:
+                teacher = database.UserModel.query.filter_by(id=classs.admin).first()
+                return_dicts.append({
+                    'id': classs.id,
+                    'name': classs.name,
+                    'days': classs.days,
+                    'startTime': str(classs.start_time),
+                    'endTime': str(classs.end_time),
+                    'teacher': f'{teacher.first_name} {teacher.last_name}'
+                })
+        elif user.user_type == 'teacher':
+            classes = database.ClassModel.query.filter_by(admin=user.id)
+            for classs in classes:
+                return_dicts.append({
+                    'id': classs.id,
+                    'name': classs.name,
+                    'days': classs.days,
+                    'startTime': str(classs.start_time),
+                    'endTime': str(classs.end_time),
+                    'teacher': f'{user.first_name} {user.last_name}'
+                }),
+        print(return_dicts)
         return return_dicts, 201
 
 
 classPost_post_args = reqparse.RequestParser()
 classPost_post_args.add_argument('name', type=str, help='Post name is required', required=True)
 classPost_post_args.add_argument('description', type=str, help='Post description is required', required=True)
+classPost_post_args.add_argument('informative', type=bool, help='Informative check is required', required=True)
 class ClassPosts(Resource):
     def get(self, class_id):
         posts = database.PostModel.query.filter_by(class_id = class_id)
@@ -240,10 +254,11 @@ class ClassPosts(Resource):
         args = enroll_post_args.parse_args()
         post_name = str(args['name'])
         post_description = str(args['description'])
+        post_informative_flag = bool(args['informative'])
         result = database.ClassModel.query.filter_by(id=class_id).first()
         if not result:
             abort(204, message='Class does not exist')
-        post = database.PostModel(name=post_name, description=post_description)
+        post = database.PostModel(name=post_name, description=post_description, informative=post_informative_flag)
         save_to_db(post)
         return {'success': True}, 201
 
@@ -293,7 +308,7 @@ api.add_resource(Login, '/login')
 api.add_resource(Register, '/register')
 api.add_resource(UserData, '/user/<int:user_id>')
 api.add_resource(UserClasses, '/user/<int:user_id>/classes')
-api.add_resource(Enroll, '/class/<int:class_id>/enroll')
+api.add_resource(Enroll, '/class/<int:user_id>/enroll')
 api.add_resource(AddVideo, '/class/<int:class_id>/add_video/')
 api.add_resource(Video, '/watch/<int:video_id>')
 api.add_resource(ClassPosts, '/class/<int:class_id>/post')

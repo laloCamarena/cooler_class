@@ -40,6 +40,7 @@ class PostModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
+    informative = db.Column(db.Boolean, nullable=False, default=True)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
     files = db.relationship('FileModel', backref='post')
 
