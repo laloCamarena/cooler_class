@@ -245,7 +245,8 @@ class ClassPosts(Resource):
             return_dicts.append({
                 'id': post.id,
                 'name': post.name,
-                'description': post.description
+                'description': post.description,
+                'informative': post.informative
             })
         return return_dicts, 201
 
