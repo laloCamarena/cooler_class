@@ -272,16 +272,16 @@ post_files_post_args.add_argument('attachment', type=str, help='Attatchment is r
 
 class PostFiles(Resource):
     def get(self, post_id, user_id):
-        user = database.db.UserModel.query.filter_by(user_id=user_id)
+        user = database.UserModel.query.filter_by(id=user_id).first()
         return_dicts = []
         if not user:
             abort(404, message='Could not find user')
         if user.user_type == 'student':
-            f =  database.db.FileModel.query.filter_by(post_id=post_id, user_id=user_id)
+            f =  database.FileModel.query.filter_by(post_id=post_id, user_id=user_id).first()
             attachment = 'this should return the file as base64 string'
             return_dicts.append({'name': f.name, 'attachment': attachment})
         elif user.user_type == 'teacher':
-            files = database.db.FileModel.query.filter_by(post_id=post_id)
+            files = database.FileModel.query.filter_by(post_id=post_id)
             for f in files:
                 #fix this shit
                 attachment = 'this should return the file as base64 string'
