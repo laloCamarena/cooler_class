@@ -256,7 +256,6 @@ class ClassPosts(Resource):
         post_name = str(args['name'])
         post_description = str(args['description'])
         post_informative_flag = int(args['informative'])
-        print(post_informative_flag)
         result = database.ClassModel.query.filter_by(id=class_id).first()
         if not result:
             abort(204, message='Class does not exist')
