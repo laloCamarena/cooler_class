@@ -246,7 +246,8 @@ class ClassPosts(Resource):
                 'id': post.id,
                 'name': post.name,
                 'description': post.description,
-                'informative': post.informative
+                'informative': post.informative,
+                'created_at': post.created_at
             })
         return return_dicts, 201
 
@@ -280,7 +281,7 @@ class PostFiles(Resource):
         if user.user_type == 'student':
             f =  database.FileModel.query.filter_by(post_id=post_id, user_id=user_id).first()
             attachment = 'this should return the file as base64 string'
-            return_dicts.append({'name': f.name, 'attachment': attachment})
+            return_dicts.append({'name': f.name, 'attachment': attachment, 'created_at': f.created_at})
         elif user.user_type == 'teacher':
             files = database.FileModel.query.filter_by(post_id=post_id)
             for f in files:
@@ -288,7 +289,8 @@ class PostFiles(Resource):
                 attachment = 'this should return the file as base64 string'
                 return_dicts.append({
                     'name': f.name,
-                    'attatchment': attachment
+                    'attatchment': attachment,
+                    'created_at': f.created_at
                 })
         return return_dicts, 201
 
