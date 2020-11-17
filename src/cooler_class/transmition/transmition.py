@@ -252,14 +252,15 @@ class ClassPosts(Resource):
 
     def post(self, class_id):
         request.get_json()
-        args = enroll_post_args.parse_args()
+        args = classPost_post_args.parse_args()
         post_name = str(args['name'])
         post_description = str(args['description'])
-        post_informative_flag = bool(args['informative'])
+        post_informative_flag = int(args['informative'])
+        print(post_informative_flag)
         result = database.ClassModel.query.filter_by(id=class_id).first()
         if not result:
             abort(204, message='Class does not exist')
-        post = database.PostModel(name=post_name, description=post_description, informative=post_informative_flag)
+        post = database.PostModel(name=post_name, description=post_description, informative=post_informative_flag, class_id=class_id)
         save_to_db(post)
         return {'success': True}, 201
 
