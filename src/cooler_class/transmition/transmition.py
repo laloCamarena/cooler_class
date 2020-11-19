@@ -17,6 +17,7 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, send, emit
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from passlib.hash import pbkdf2_sha512
+from sqlalchemy.sql.elements import True_
 from cooler_class.database import database
 # from cooler_class.model.model import MODEL, CLASS_NAMES
 # from cooler_class.model.visualize import display_instances
@@ -247,7 +248,7 @@ class ClassPosts(Resource):
                 'name': post.name,
                 'description': post.description,
                 'informative': post.informative,
-                'created_at': post.created_at
+                'created_at': str(post.created_at)
             })
         return return_dicts, 201
 
@@ -281,7 +282,7 @@ class PostFiles(Resource):
         if user.user_type == 'student':
             f =  database.FileModel.query.filter_by(post_id=post_id, user_id=user_id).first()
             attachment = 'this should return the file as base64 string'
-            return_dicts.append({'name': f.name, 'attachment': attachment, 'created_at': f.created_at})
+            return_dicts.append({'name': f.name, 'attachment': attachment, 'created_at': str(f.created_at)})
         elif user.user_type == 'teacher':
             files = database.FileModel.query.filter_by(post_id=post_id)
             for f in files:
@@ -290,7 +291,7 @@ class PostFiles(Resource):
                 return_dicts.append({
                     'name': f.name,
                     'attatchment': attachment,
-                    'created_at': f.created_at
+                    'created_at': str(f.created_at)
                 })
         return return_dicts, 201
 
@@ -340,6 +341,10 @@ def handle_frame(frame):
     encoded_image = 'data:image/jpeg;base64,' + base64.b64encode(buffer).decode('utf-8')
 
     emit('get-stream', encoded_image, broadcast=True)
+
+@socketio.on('radio')
+def handle_frame(audio):
+    emit('voice', audio, broadcast=True)
 
 def save_to_db(data):
     database.db.session.add(data)
