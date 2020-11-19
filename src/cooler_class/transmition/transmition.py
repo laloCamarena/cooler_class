@@ -16,6 +16,7 @@ from flask_cors import CORS
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, send, emit
 from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
+from numpy.lib.npyio import save
 from passlib.hash import pbkdf2_sha512
 from sqlalchemy.sql.elements import True_
 from cooler_class.database import database
@@ -171,19 +172,33 @@ class Video(Resource):
                 break
 
 enroll_post_args = reqparse.RequestParser()
-enroll_post_args.add_argument('class_id', type=int, help='Student ID is required', required=True)
+enroll_post_args.add_argument('id', type=int, help='Student ID is required', required=True)
 enroll_post_args.add_argument('password', type=str, help='Password is required', required=True)
 class Enroll(Resource):
     def post(self, user_id):
         request.get_json()
         args = enroll_post_args.parse_args()
-        class_id = int(args['class_id'])
+        class_id = int(args['id'])
         password = str(args['password'])
         result = database.ClassModel.query.filter_by(id=class_id).first()
-        if result.password != password:
+        if not pbkdf2_sha512.verify(password, result.password):
             abort(204, message='Class password is incorrect')
         database.db.session.execute(database.userClass.insert().values(class_id=class_id, user_id=user_id))
-        database.db.commit()
+        database.db.session.commit()
+        return 201
+
+create_class_post_args = reqparse.RequestParser()
+create_class_post_args.add_argument('name', type=str, help='Student ID is required', required=True)
+create_class_post_args.add_argument('password', type=str, help='Password is required', required=True)
+class CreateClass(Resource):
+    def post(self, user_id):
+        request.get_json()
+        args = create_class_post_args.parse_args()
+        name = str(args['name'])
+        password = str(args['password'])
+        pwd_hash = pbkdf2_sha512.encrypt(password)
+        new_class = database.ClassModel(name=name, password=pwd_hash, admin=user_id)
+        save_to_db(new_class)
         return 201
 
 class_data_post_args = reqparse.RequestParser()
@@ -287,10 +302,10 @@ class PostFiles(Resource):
             files = database.FileModel.query.filter_by(post_id=post_id)
             for f in files:
                 #fix this shit
-                attachment = 'this should return the file as base64 string'
+                attachment = base64.b64encode(open(f'../{f.location}', 'rb').read())
                 return_dicts.append({
                     'name': f.name,
-                    'attatchment': attachment,
+                    'attatchment': str(attachment),
                     'created_at': str(f.created_at)
                 })
         return return_dicts, 201
@@ -313,6 +328,7 @@ api.add_resource(Register, '/register')
 api.add_resource(UserData, '/user/<int:user_id>')
 api.add_resource(UserClasses, '/user/<int:user_id>/classes')
 api.add_resource(Enroll, '/class/<int:user_id>/enroll')
+api.add_resource(CreateClass, '/class/<int:user_id>/create')
 api.add_resource(AddVideo, '/class/<int:class_id>/add_video/')
 api.add_resource(Video, '/watch/<int:video_id>')
 api.add_resource(ClassPosts, '/class/<int:class_id>/post')

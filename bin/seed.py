@@ -32,11 +32,11 @@ post4 = PostModel(id=4, name='Post 4', description='Post4 description', class_id
 post5 = PostModel(id=5, name='Post 5', description='Post5 description', class_id=1)
 post6 = PostModel(id=6, name='Post 6', description='Post6 description', class_id=2)
 
-file1 = FileModel(name='file1', location='./data/post_files/file1.pdf', user_id=1, post_id=1)
-file2 = FileModel(name='file2', location='./data/post_files/file2.pdf', user_id=1, post_id=2)
-file5 = FileModel(name='file5', location='./data/post_files/file5.pdf', user_id=2, post_id=3)
-file6 = FileModel(name='file6', location='./data/post_files/file6.pdf', user_id=3, post_id=1)
-file7 = FileModel(name='file7', location='./data/post_files/file7.pdf', user_id=3, post_id=2)
+file1 = FileModel(name='file1', location='data/post_files/1/file1.pdf', user_id=1, post_id=1)
+file2 = FileModel(name='file2', location='data/post_files/2/file2.pdf', user_id=1, post_id=2)
+file5 = FileModel(name='file3', location='data/post_files/3/file3.pdf', user_id=2, post_id=3)
+file6 = FileModel(name='file4', location='data/post_files/1/file4.pdf', user_id=3, post_id=1)
+file7 = FileModel(name='file5', location='data/post_files/2/file5.pdf', user_id=3, post_id=2)
 
 student1.classes.append(class1)
 student1.classes.append(class3)
