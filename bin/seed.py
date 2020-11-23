@@ -21,7 +21,7 @@ student2 = UserModel(id=2, first_name='Diego', last_name='Gozalez', email='diego
 student3 = UserModel(id=3, first_name='Juan', last_name='Olvera', email='juan@gmail.com', password=pwd_hash)
 student4 = UserModel(id=4, first_name='Pepe', last_name='Alvarez', email='pepe@gmail.com', user_type='teacher', password=pwd_hash)
 
-class1 = ClassModel(id=1, name='Matematicas 01', start_time=datetime.time(hour=9), end_time=datetime.time(hour=11), password=pwd_hash, admin=4)
+class1 = ClassModel(id=1, name='Matematicas 01', start_time=datetime.strptime('09:00', '%H:%M'), end_time=datetime.strptime('11:00', '%H:%M'), password=pwd_hash, admin=4)
 class2 = ClassModel(id=2, name='Estructuras de datos', password=pwd_hash, admin=4)
 class3 = ClassModel(id=3, name='Bases de datos', password=pwd_hash, admin=4)
 
