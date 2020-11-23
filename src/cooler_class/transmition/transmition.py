@@ -3,6 +3,7 @@
 # then you can run the server as transmition.app.run()
 
 # built-ins
+from datetime import datetime
 import time
 
 # Pypi/local packages
@@ -19,6 +20,7 @@ from flask_restful import Api, Resource, reqparse, abort, fields, marshal_with
 from numpy.lib.npyio import save
 from passlib.hash import pbkdf2_sha512
 from sqlalchemy.sql.elements import True_
+from sqlalchemy import desc, asc
 from cooler_class.database import database
 # from cooler_class.model.model import MODEL, CLASS_NAMES
 # from cooler_class.model.visualize import display_instances
@@ -188,16 +190,37 @@ class Enroll(Resource):
         return 201
 
 create_class_post_args = reqparse.RequestParser()
-create_class_post_args.add_argument('name', type=str, help='Student ID is required', required=True)
+create_class_post_args.add_argument('name', type=str, help='Name of the class is required', required=True)
+create_class_post_args.add_argument('startTime', type=str, help='Class start time is required', required=True)
+create_class_post_args.add_argument('endTime', type=str, help='Class end time is required', required=True)
+create_class_post_args.add_argument('days', type=str, help='Days the class is taught are required', required=True)
 create_class_post_args.add_argument('password', type=str, help='Password is required', required=True)
 class CreateClass(Resource):
     def post(self, user_id):
         request.get_json()
         args = create_class_post_args.parse_args()
         name = str(args['name'])
+        start_time_string = str(args['startTime'])
+        try:
+            start_time = datetime.strptime(start_time_string, '%H:%M')
+        except:
+            start_time = None
+        end_time_string = str(args['endTime'])
+        try:
+            end_time = datetime.strptime(end_time_string, '%H:%M')
+        except:
+            end_time = None
+        days = str(args['days']) if len(str(args['days'])) > 0 else ''
         password = str(args['password'])
         pwd_hash = pbkdf2_sha512.encrypt(password)
-        new_class = database.ClassModel(name=name, password=pwd_hash, admin=user_id)
+        new_class = database.ClassModel(
+            name=name,
+            password=pwd_hash,
+            start_time=start_time,
+            end_time=end_time,
+            days=days,
+            admin=user_id
+        )
         save_to_db(new_class)
         return 201
 
@@ -229,9 +252,9 @@ class UserClasses(Resource):
                 return_dicts.append({
                     'id': classs.id,
                     'name': classs.name,
-                    'days': classs.days,
-                    'startTime': str(classs.start_time),
-                    'endTime': str(classs.end_time),
+                    'days': classs.days if classs.days else '',
+                    'startTime': str(classs.start_time) if classs.end_time else '',
+                    'endTime': str(classs.end_time) if classs.end_time else '',
                     'teacher': f'{teacher.first_name} {teacher.last_name}'
                 })
         elif user.user_type == 'teacher':
@@ -240,9 +263,9 @@ class UserClasses(Resource):
                 return_dicts.append({
                     'id': classs.id,
                     'name': classs.name,
-                    'days': classs.days,
-                    'startTime': str(classs.start_time),
-                    'endTime': str(classs.end_time),
+                    'days': classs.days if classs.days else '',
+                    'startTime': str(classs.start_time) if classs.end_time else '',
+                    'endTime': str(classs.end_time) if classs.end_time else '',
                     'teacher': f'{user.first_name} {user.last_name}'
                 }),
         print(return_dicts)
@@ -255,7 +278,7 @@ classPost_post_args.add_argument('description', type=str, help='Post description
 classPost_post_args.add_argument('informative', type=bool, help='Informative check is required', required=True)
 class ClassPosts(Resource):
     def get(self, class_id):
-        posts = database.PostModel.query.filter_by(class_id = class_id)
+        posts = database.PostModel.query.filter_by(class_id=class_id).order_by(desc('created_at'))
         return_dicts = []
         for post in posts:
             return_dicts.append({
