@@ -6,3 +6,10 @@
 **/.vscode/
 **/cooler_class.egg-info/
 **/.ipynb_checkpoints/
+*.dia
+*.docx
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.h5
