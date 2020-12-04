@@ -22,8 +22,8 @@ from passlib.hash import pbkdf2_sha512
 from sqlalchemy.sql.elements import True_
 from sqlalchemy import desc, asc
 from cooler_class.database import database
-# from cooler_class.model.model import MODEL, CLASS_NAMES
-# from cooler_class.model.visualize import display_instances
+from cooler_class.model.model import MODEL, CLASS_NAMES
+from cooler_class.model.visualize import display_instances
 
 app = Flask(__name__)
 app = database.add_db(app)
@@ -309,7 +309,7 @@ class ClassPosts(Resource):
 
 post_files_post_args = reqparse.RequestParser()
 post_files_post_args.add_argument('name', type=str, help='File name is required', required=True)
-post_files_post_args.add_argument('attachment', type=str, help='Attatchment is required', required=True)
+# post_files_post_args.add_argument('attachment', type=werkzeug.datastructures.FileStorage)
 
 class PostFiles(Resource):
     def get(self, post_id, user_id):
@@ -319,16 +319,17 @@ class PostFiles(Resource):
             abort(404, message='Could not find user')
         if user.user_type == 'student':
             f =  database.FileModel.query.filter_by(post_id=post_id, user_id=user_id).first()
-            attachment = 'this should return the file as base64 string'
+            attachment = str(base64.b64encode(open(f'../{f.location}', 'rb').read()))
+            attachment = 'data:application/pdf;base64,' + attachment[2:len(attachment) - 1]
             return_dicts.append({'name': f.name, 'attachment': attachment, 'created_at': str(f.created_at)})
         elif user.user_type == 'teacher':
             files = database.FileModel.query.filter_by(post_id=post_id)
             for f in files:
                 #fix this shit
-                attachment = base64.b64encode(open(f'../{f.location}', 'rb').read())
+                attachment = 'data:application/pdf;base64,' + str(base64.b64encode(open(f'../{f.location}', 'rb').read()))
                 return_dicts.append({
                     'name': f.name,
-                    'attatchment': str(attachment),
+                    'attatchment': attachment,
                     'created_at': str(f.created_at)
                 })
         return return_dicts, 201
@@ -337,10 +338,17 @@ class PostFiles(Resource):
         request.get_json()
         args = post_files_post_args.parse_args()
         name = str(args['name'])
-        attachment = str(args['attachment'])
+        result = database.FileModel.query.filter_by(post_id=post_id, user_id=user_id)
+        # attachment = str(args['attachment'])
+        # print(attachment)
         # pending: decode attachment str to pdf and save to storage
-        f = database.FileModel(name=name, location=f'./data/post_files/{name}', user_id=user_id, post_id=post_id)
-        save_to_db(f)
+        if not result:
+            f = database.FileModel(name=name, location=f'./data/post_files/{name}', user_id=user_id, post_id=post_id)
+            save_to_db(f)
+        else:
+            setattr(result, 'name', name)
+            print(result.name)
+            database.db.session.commit()
         return {'success': True}, 201
 
     def patch(self, post_id, user_id):
@@ -371,15 +379,16 @@ def handle_frame(frame):
     cv2_img = np.array(img)[:, :, ::-1]
 
     # analize image and create the new image that will be sent
-    # results = MODEL.detect([cv2_img], verbose=0)
-    # r = results[0]
-    # cooler_image = display_instances(cv2_img.copy(), r['rois'], r['masks'], r['class_ids'], CLASS_NAMES, r['scores'])
+    results = MODEL.detect([cv2_img], verbose=0)
+    r = results[0]
+    cooler_image = display_instances(cv2_img.copy(), r['rois'], r['masks'], r['class_ids'], CLASS_NAMES, r['scores'])
 
     # encode image to base64
     buffer = cv2.imencode('.jpg', cv2_img)[1].tobytes()
     encoded_image = 'data:image/jpeg;base64,' + base64.b64encode(buffer).decode('utf-8')
+    print(frame)
 
-    emit('get-stream', encoded_image, broadcast=True)
+    emit('get-stream', frame, broadcast=True)
 
 @socketio.on('radio')
 def handle_frame(audio):
